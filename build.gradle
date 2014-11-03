@@ -1,0 +1,181 @@
+repositories {
+    mavenLocal()
+    mavenCentral()
+    // For spock
+    maven {
+        url 'http://oss.sonatype.org/content/repositories/releases/'
+    }
+}
+
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'signing'
+apply plugin: 'idea'
+
+ext.artifactId = 'flipside-java'
+group = 'com.johnnywey'
+version = '0.1.0-SNAPSHOT'
+
+jar {
+    baseName = artifactId
+}
+
+tasks.withType(JavaCompile) { 
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+}   
+
+idea.module {
+    ext.gradleCacheVariable = 'GRADLE_CACHE'
+    ext.downloadJavadoc = true
+}
+
+idea.project {
+    ext.jdkName = '1.8'
+    ext.wildcards = ['!?*.java']
+}
+
+dependencies {
+    testCompile 'org.codehaus.groovy:groovy-all:2.2.2'
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.spockframework:spock-core:0.7-groovy-2.0'
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allSource
+    classifier = 'sources'
+}
+
+configurations {
+    tests
+}
+
+artifacts {
+    archives jar
+    archives javadocJar
+    archives sourcesJar
+}    
+  
+signing {
+    sign configurations.archives
+}
+
+test {
+    String testType = System.properties['test.type']
+    if (testType == 'integration') {
+        include '**/*IntegrationTest.*'
+        include '**/*IntegrationSpec.*'
+    } else if (testType == 'unit') {
+        include '**/*Test.*'
+        include '**/*Spec.*'
+        exclude '**/*IntegrationTest.*'
+        exclude '**/*IntegrationSpec.*'
+    } else if (testType == 'all') {
+        include '**/*Test.*'
+        include '**/*Spec.*'
+    } else {
+        //Default to unit
+        include '**/*Test.*'
+        include '**/*Spec.*'
+        exclude '**/*IntegrationTest.*'
+        exclude '**/*IntegrationSpec.*'
+    }
+
+    // Prints results of test inline
+    afterSuite { desc, result ->
+        // Don't report on modules with no test suites
+        if (!desc.className) {
+            return
+        }
+
+        String testStatus
+        if (System.properties['nocolor']) {
+            testStatus = result.resultType
+        } else if (result.resultType != org.gradle.api.tasks.testing.TestResult.ResultType.SUCCESS) {
+            // Print in red if failed
+            testStatus = "\033[31m${result.resultType}\033[0m"
+        } else {
+            // Print in green if success/skipped
+            testStatus = "\033[32m${result.resultType}\033[0m"
+        }
+        println "Test suite ${desc.name}: ${testStatus}"
+    }
+}
+
+// Only *require* signing if we are uploading
+gradle.taskGraph.whenReady { taskGraph ->
+    tasks.withType(org.gradle.plugins.signing.Sign).all {
+        required = taskGraph.hasTask(":uploadArchives")
+    }
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests :D'
+    group = 'Verification'
+    include '**/*IntegrationTest.*'
+    include '**/*IntegrationSpec.*'
+    afterSuite { desc, result ->
+        if (desc.className)
+            println "Test suite ${desc.name}: ${result.resultType}"
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.1'
+}
+
+def username = 'username'
+def password = 'password'
+if(hasProperty('sonatypeUsername')) {
+    username = sonatypeUsername
+}
+if(hasProperty('sonatypePassword')) {
+    password = sonatypePassword
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: username, password: password)
+            }
+
+            uniqueVersion = false
+
+            pom.project {
+                name 'Flipsde Java'
+                packaging 'jar'
+                description 'A simple Options library for JAva'
+                url 'https://github.com/johnnywey/flipside-java'
+
+                scm {
+                    url 'scm:git@github.com:johnnywey/flipside-java.git'
+                    connection 'scm:git@github.com:johnnywey/flipside-java.git'
+                    developerConnection 'scm:git@github.com:johnnywey/flipside-java.git'
+                }
+
+                licenses {
+                    license {
+                        name 'MIT License'
+                        url 'http://opensource.org/licenses/MIT'
+                        distribution 'repo'
+                    }
+                }
+
+               developers {
+                    developer {
+                        id 'johnnywey'
+                        name 'Johnny Wey'
+                   }
+               }
+           }
+        }
+    }
+}
