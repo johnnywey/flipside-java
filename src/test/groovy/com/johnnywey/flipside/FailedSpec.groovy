@@ -3,7 +3,6 @@ package com.johnnywey.flipside
 import com.johnnywey.flipside.failable.Fail
 import com.johnnywey.flipside.failable.FailableException
 import com.johnnywey.flipside.failable.Failed
-import com.johnnywey.flipside.failable.Success
 import spock.lang.Specification
 
 class FailedSpec extends Specification {

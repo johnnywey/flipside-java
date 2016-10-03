@@ -2,10 +2,6 @@ package com.johnnywey.flipside.failable;
 
 import com.johnnywey.flipside.marker.DidNotWork;
 import com.johnnywey.flipside.marker.DidItWork;
-import com.sun.org.apache.bcel.internal.generic.FADD;
-
-import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
